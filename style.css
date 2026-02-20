@@ -48,3 +48,8 @@ body {
   border: 2px solid brown;
   border-radius: 50%;
 }
+.mole {
+  background-image: url("mole.jpeg"); 
+  background-size: cover;
+  background-position: center;
+}
