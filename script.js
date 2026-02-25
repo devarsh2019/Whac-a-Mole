@@ -1,11 +1,34 @@
-const blocks = document.querySelectorAll(".game-content");
+// DOM REFERENCES
+const gameContainer = document.querySelector(".game");
+const startBtn = document.getElementById("start-game");
+const pauseBtn = document.getElementById("pause-game");
+const scoreDisplay = document.getElementById("score-counter");
+const timerDisplay = document.getElementById("Timer");
 
-//Class BoardState which two methods setMole and removeMole
+// GAME CONFIG
+const TOTAL_BLOCKS = 12;
+const GAME_DURATION = 30;
+const MOLE_INTERVAL = 1000;
+const MOLE_LIFETIME = 3000;
+const MAX_ACTIVE_MOLES = 3;
+
+// GAME STATE
+let boardState = [];
+let blocks = [];
+let score = 0;
+let timeLeft = GAME_DURATION;
+let moleInterval = null;
+let timerInterval = null;
+let isPaused = false;
+let isGameRunning = false;
+
+// BOARD STATE CLASS
 class BoardState {
-  constructor(id, hasMole) {
+  constructor(id) {
     this.id = id;
-    this.hasMole = hasMole;
+    this.hasMole = false;
   }
+
   setMole() {
     if (!this.hasMole) {
       this.hasMole = true;
@@ -21,59 +44,67 @@ class BoardState {
   }
 }
 
-//Initialize board State by looping for 12 indexes
-const boardState = [];
-blocks.forEach((block, index) => {
-  boardState.push(new BoardState(index, false));
-});
+// INITIALIZE BOARD
+function createBoard() {
+  for (let i = 0; i < TOTAL_BLOCKS; i++) {
+    const block = document.createElement("div");
+    block.classList.add("game-content");
+    gameContainer.appendChild(block);
+  }
 
-//Set the score
-let score = 0;
-const scoreDisplay = document.getElementById("score-counter");
+  blocks = document.querySelectorAll(".game-content");
 
-blocks.forEach((block, index) => {
-  block.addEventListener("click", () => {
-    if (boardState[index].hasMole) {
-      boardState[index].removeMole();
-      score++;
-      scoreDisplay.textContent = score;
-    }
+  blocks.forEach((block, index) => {
+    boardState.push(new BoardState(index));
+
+    block.addEventListener("click", () => handleBlockClick(index));
   });
-});
-
-//Set the timer
-let timeLeft = 30;
-let timerInterval;
-const timerDisplay = document.getElementById("Timer");
-
-//Start the Game by clicking the button
-let moleInterval;
-const startBtn = document.getElementById("start-game");
-startBtn.addEventListener("click", startGame);
-
-function startGame() {
-  console.log("Game Started");
-  score = 0;
-  scoreDisplay.textContent = score;
-  timeLeft = 30;
-  timerDisplay.textContent = timeLeft;
-  if (moleInterval) {
-    clearInterval(moleInterval);
-  }
-  if (timerInterval) {
-    clearInterval(timerInterval);
-  }
-
-  moleInterval = setInterval(() => {
-    randomMole();
-  }, 1000);
-
-  timerInterval = setInterval(() => {
-    updateTimer();
-  }, 1000);
 }
 
-//Function for updating the timer and reflects the changes on the UI
+// EVENTLISTENER
+startBtn.addEventListener("click", startGame);
+pauseBtn.addEventListener("click", togglePause);
+
+// Initialize board on load
+createBoard();
+
+// HANDLE BLOCK CLICK
+function handleBlockClick(index) {
+  if (boardState[index].hasMole) {
+    boardState[index].removeMole();
+    score++;
+    scoreDisplay.textContent = score;
+  }
+}
+
+// START GAME
+function startGame() {
+  if (isGameRunning) return;
+  resetGameState();
+
+  moleInterval = setInterval(randomMole, MOLE_INTERVAL);
+  timerInterval = setInterval(updateTimer, 1000);
+
+  isGameRunning = true;
+  isPaused = false;
+  pauseBtn.textContent = "Pause";
+}
+
+// RESET GAME STATE
+function resetGameState() {
+  score = 0;
+  timeLeft = GAME_DURATION;
+
+  scoreDisplay.textContent = score;
+  timerDisplay.textContent = timeLeft;
+
+  clearInterval(moleInterval);
+  clearInterval(timerInterval);
+
+  boardState.forEach((block) => block.removeMole());
+}
+
+// UPDATE TIMER
 function updateTimer() {
   timeLeft--;
   timerDisplay.textContent = timeLeft;
@@ -83,23 +114,24 @@ function updateTimer() {
   }
 }
 
-//Function to alert when the Game is Over
+// END GAME
 function endGame() {
   clearInterval(moleInterval);
   clearInterval(timerInterval);
+
+  isGameRunning = false;
+  isPaused = false;
+  pauseBtn.textContent = "Pause";
+
   alert("Time is Over !");
 }
 
-//Function to generate the random mole
+// RANDOM MOLE
 function randomMole() {
-  const activeMoles = boardState.filter((block) => block.hasMole).length;
+  const activeMoles = boardState.filter((b) => b.hasMole).length;
+  if (activeMoles >= MAX_ACTIVE_MOLES) return;
 
-  if (activeMoles >= 3) {
-    return;
-  }
-
-  const emptyBlocks = boardState.filter((block) => !block.hasMole);
-
+  const emptyBlocks = boardState.filter((b) => !b.hasMole);
   if (emptyBlocks.length === 0) return;
 
   const randomBlock =
@@ -109,5 +141,22 @@ function randomMole() {
 
   setTimeout(() => {
     randomBlock.removeMole();
-  }, 3000);
+  }, MOLE_LIFETIME);
+}
+
+// PAUSE AND RESUME
+function togglePause() {
+  if (!isGameRunning) return;
+
+  if (!isPaused) {
+    clearInterval(moleInterval);
+    clearInterval(timerInterval);
+    isPaused = true;
+    pauseBtn.textContent = "Resume";
+  } else {
+    moleInterval = setInterval(randomMole, MOLE_INTERVAL);
+    timerInterval = setInterval(updateTimer, 1000);
+    isPaused = false;
+    pauseBtn.textContent = "Pause";
+  }
 }
